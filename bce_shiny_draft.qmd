@@ -1,0 +1,101 @@
+---
+title: "BCE Shiny App draft"
+author: "IM & JC"
+format: html
+editor: visual
+---
+
+Load packages 
+```{r}
+library(shiny)
+library(tidyverse)
+library(palmerpenguins)
+library(here)
+library(janitor)
+```
+
+Read in the data
+```{r}
+bce_data <- read.csv(here("Data","BCE_SURVEYS_All_Years_20230811.csv")) %>%
+  clean_names() 
+
+```
+
+
+Create user interface, create server function, and combine into app
+```{r}
+
+### Create the user interface:
+ui <- fluidPage(
+  titlePanel("BCE Data Exploration"),
+  sidebarLayout(
+    sidebarPanel("Choices",
+      radioButtons(
+        inputId = "bce_data",
+        label = "Kelp treatment", 
+        choices = c("Control", "Removal")
+      ),
+      
+      selectInput(
+        inputId = "pt_color",
+        label = "Select group",
+        choices = c("Algae" = "olivedrab",
+                    "Invertibrates" = "brown3",
+                    "Fish" = "grey")
+      )
+    ), ### end sidebar layout
+    mainPanel("Map of Coastal Sites",
+      plotOutput(outputId = "bce_plot"),
+      h3("Summary table"),
+      tableOutput((outputId ="bce_table"))
+    ) ### end main Panel
+  ) ### end sidebar Layout
+)
+
+server <- function(input, output) {
+  bce_select <- reactive({
+    bce_groups <- bce_data %>%
+      filter(group == input$group)
+      
+    return(bce_groups)
+  }) ### end bce_select
+
+  output$bce_plot <- renderPlot({
+    ggplot(data = bce_select()) +
+      geom_col(aes(x = site, y = count, position = "dodge"),
+                 color = input$pt_color)
+  }) ### end penguin_plot
+  
+  bce_sum_table <- reactive({
+    bce_summary_df <- bce_data %>%
+      filter(group == input$group) %>%
+      group_by(treatment) %>%
+      summarise(density = sum(count/area, na.rm = TRUE))
+    return(bce_summary_df)
+  })
+  
+  output$bce_table <- renderTable({
+    bce_sum_table()
+  })
+} ### end server
+
+shinyApp(ui = ui, server = server)
+
+
+
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
